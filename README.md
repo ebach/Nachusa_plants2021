@@ -1,2 +1,3 @@
 # Nachusa_plants2021
 code for analyses in Bach &amp; Kleiman (in submisstion, March 2021)
+This code includes plant community analyses for vegetation transect data collected at The Nature Conservancy's Nachusa Grasslands near Franklin Grove, IL USA. Data was collected between 1994 and 2015. There are 12 permenant transects, each comprised of 10-15 quadrats (1m2). Quadrats were laid down on alternating sides of the transect. These analysis reflect presence/absence data becuase cover data was not collected in the same manner at each sampling point. Transects were established by B. Kleiman, data analysis conducted by E. Bach.
