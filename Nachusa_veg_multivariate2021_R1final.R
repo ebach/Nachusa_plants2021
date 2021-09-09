@@ -4,6 +4,7 @@
 #Indicator species analyses
 #15 January 2020
 #Updated 7 July 2021 for revisions to manuscript
+#Updated 7 September 2021 to ensure code works with finalized data file published at DataDryad
 
 rm(list=ls())
 library(reshape2)
@@ -13,16 +14,16 @@ library(vegan)
 library(gridExtra)
 library(indicspecies)
 
-#read in data, "Nachusa_veg_transect_data1994_2020vFinal.csv"
+#read in data, "Nachusa_veg_transect_data1994_2016.csv"
 Nachusa.data<-read.csv(file.choose(),header=T, na.strings="NA")
 head(Nachusa.data[,1:11])
 
 #cast wide
-Nachusa.wide<-dcast(Nachusa.data, Transect + Sample_Year + Quadrat ~ newcol, sum, value.var = "cover_value")
+Nachusa.wide<-dcast(Nachusa.data, Transect + Sample_Year + Quadrat ~ Scientific_Name, sum, value.var = "cover_value")
 #484 rows, 429 cols
 head(Nachusa.wide)
 
-#reduce data to transects >3 sampling points, P24 now included (data error corrected)
+#reduce data to transects >3 sampling points
 Nachusa.wide2<-droplevels(subset(Nachusa.wide, Nachusa.wide$Transect=="P08"|Nachusa.wide$Transect=="P13"|Nachusa.wide$Transect=="P14"|Nachusa.wide$Transect=="P15"|Nachusa.wide$Transect=="P17"|Nachusa.wide$Transect=="P19"|Nachusa.wide$Transect=="P23"|Nachusa.wide$Transect=="P24"|
                                    Nachusa.wide$Transect=="P26"|Nachusa.wide$Transect=="P31"|Nachusa.wide$Transect=="P31"|Nachusa.wide$Transect=="P32"|Nachusa.wide$Transect=="P39"|Nachusa.wide$Transect=="P41"))
 #585 observations
@@ -97,7 +98,7 @@ Nachusa.wide2$site<-as.factor(site.names)
 data.pa<-cbind(Nachusa.wide2[,c(1:3,430:431)],decostand(Nachusa.wide2[,-c(1:3,430:431)],"pa"))
 data.pa$Sample_Year<-as.factor(data.pa$Sample_Year)
 
-#drop wetland site, doesn't make sense to include here, even for anaylsis within the transect
+#drop wetland site, doesn't make sense to include here, even for analysis within the transect
 data.pa2<-droplevels(subset(data.pa, data.pa$Transect!="P13"))
 
 #Use the adonis() function to perform PERMANOVA (non-parametric, multivariate analysis of variance) on the communities of each sample
@@ -126,7 +127,7 @@ mds.dist<-metaMDSdist(decostand(native.prairie[,-c(1:5,432:433)], "pa"),k=2, ind
 np.stat<-betadisper(mds.dist, native.prairie$TransYear, type="median")
 np.stat
 
-#Now use TukeysHSD to contrast the median dispersio of the groups and find differences
+#Now use TukeysHSD to contrast the median dispersion of the groups and find differences
 TukeyHSD(np.stat)
 
 mds.pa2<-metaMDS(decostand(native.prairie[,-c(1:5,432:433)],"pa" ),distance="jaccard", k=2,autotransform=FALSE, na.rm=TRUE)
@@ -139,20 +140,10 @@ mds.pa3
 #will use 2D, probably fine, not that much advantage of 3D
 
 #graph
-np.graph<-ggplot.NMDS(mds.pa2, native.prairie$Transect, colors.4)+annotate("text", x=1.1, y=-1.0, label="stress=0.185", size=6)+labs(title = "Native Prairie")+theme(plot.title = element_text(hjust=0.5, size=20), panel.grid= element_blank())
-np.graph
-
-#How to best show these differences? Same color loops around 14/19 and 15/17? different shades of dots?
-#Look at year differences first, how to best communicate everything going on
-
 
 #colors to add in sampling year deminsion
 colors.14<-c(rgb(111,172,93, alpha=255, max=255), rgb(111,172,93, alpha=100, max=255),rgb(111,172,93, alpha=50, max=255),rgb(147,80,161, max=255,alpha = 255), rgb(147,80,161, max=255,alpha = 100),rgb(147,80,161, max=255,alpha = 50),
              rgb(188,125,57, max=255, alpha = 255),rgb(188,125,57, max=255, alpha = 200),rgb(188,125,57, max=255, alpha = 150),rgb(188,125,57, max=255, alpha = 100),rgb(188,125,57, max=255, alpha = 50), rgb(105,126,213, max=255, alpha = 255), rgb(105,126,213, max=255, alpha = 100), rgb(105,126,213, max=255, alpha = 50))
-
-#interaction graph
-np.graph2<-ggplot.NMDS(mds.pa2, native.prairie$TransYear, colors.14)+annotate("text", x=1.1, y=-1.0, label="stress=0.185", size=6)+labs(title = "Native Prairie")+theme(plot.title = element_text(hjust=0.5, size=20, face="bold"), panel.grid= element_blank())
-np.graph2
 
 #create centroid point + error bars per site per year?
 ggplot.NMDS.point<-function(XX,ZZ,COLORS){
@@ -172,20 +163,15 @@ ggplot.NMDS.point<-function(XX,ZZ,COLORS){
   X1    
 }
 
-#geom_pointrange(aes(color = Site),xmin=(mean.x-SE.x), xmax=(mean.x+SE.x), ymin=(mean.y-SE.y), ymax=(mean.y+SE.y), fatten=5) +
-
 #interaction graph for revision, simplified
 np.graph2<-ggplot.NMDS.point(mds.pa2, native.prairie$TransYear, colors.14)+annotate("text", x=1.1, y=-1.0, label="stress=0.185", size=6)+labs(title = "Native Prairie")+theme(plot.title = element_text(hjust=0.5, size=20, face="bold"), panel.grid= element_blank())
 np.graph2
 
-#Nachusa labels
+#Nachusa labels, for use presenting to Nachusa audience
 #rearrange colors to reflect factors levels (which are re-ordered alphabetically)
 #note, could also preserve factor levels, but this was faster for me
 colors.14N<-c(rgb(111,172,93, alpha=255, max=255), rgb(111,172,93, alpha=100, max=255),rgb(111,172,93, alpha=50, max=255),rgb(188,125,57, max=255, alpha = 255),rgb(188,125,57, max=255, alpha = 200),rgb(188,125,57, max=255, alpha = 150),rgb(188,125,57, max=255, alpha = 100),rgb(188,125,57, max=255, alpha = 50), 
               rgb(105,126,213, max=255, alpha = 255), rgb(105,126,213, max=255, alpha = 100), rgb(105,126,213, max=255, alpha = 50),rgb(147,80,161, max=255,alpha = 255), rgb(147,80,161, max=255,alpha = 100),rgb(147,80,161, max=255,alpha = 50))
-
-np.graph2N<-ggplot.NMDS(mds.pa2, native.prairie$SiteYear, colors.14N)+annotate("text", x=1, y=-1.0, label="stress=0.185", size=6)+labs(title = "Native Prairie")+theme(plot.title = element_text(hjust=0.5, size=20, face="bold"), panel.grid= element_blank())
-np.graph2N
 
 #interaction graph for revision, simplified
 np.graph2NR<-ggplot.NMDS.point(mds.pa2, native.prairie$SiteYear, colors.14N)+annotate("text", x=1.1, y=-1.0, label="stress=0.185", size=6)+labs(title = "Native Prairie")+theme(plot.title = element_text(hjust=0.5, size=20, face="bold"), panel.grid= element_blank())
@@ -210,19 +196,19 @@ envectors2
 #Run the adonis within each transect, but use scores from full ordination (is that legit?)
 #subset native prairie dataset and run adonis to see if Sample_Year significant
 P14<-droplevels(subset(native.prairie, native.prairie$Transect=="P14"))
-adonis(P14[,-c(1:4,431)]~P14$Sample_Year, permutations=999)
+adonis(P14[,-c(1:5,432, 433)]~P14$Sample_Year, permutations=999)
 #sample year strongly significant
 
 P15<-droplevels(subset(native.prairie, native.prairie$Transect=="P15"))
-adonis(P15[,-c(1:4,431)]~P15$Sample_Year, permutations=999)
+adonis(P15[,-c(1:5,432, 433)]~P15$Sample_Year, permutations=999)
 #Sample year strongly significant
 
 P17<-droplevels(subset(native.prairie, native.prairie$Transect=="P17"))
-adonis(P17[,-c(1:4,431)]~P17$Sample_Year, permutations=999)
+adonis(P17[,-c(1:5,432, 433)]~P17$Sample_Year, permutations=999)
 #Sample year strongly significant
 
 P19<-droplevels(subset(native.prairie, native.prairie$Transect=="P19"))
-adonis(P19[,-c(1:4,431)]~P19$Sample_Year, permutations=999)
+adonis(P19[,-c(1:5,432, 433)]~P19$Sample_Year, permutations=999)
 #Sample year strongly significant
 
 #run envfit regressions? But want to keep original scores from full NMDS (e.g. not a new dispersal for each transect)
@@ -236,7 +222,7 @@ P14.scores<-droplevels(subset(np.scores, np.scores$Transect=="P14"))
 
 envectors14<-envfit(P14.scores[,1:2] ~ P14.scores$Sample_Year, na.rm=TRUE)
 head(envectors14)
-#Sample_Year P=0.231
+#Sample_Year P=0.251
 
 P15.scores<-droplevels(subset(np.scores, np.scores$Transect=="P15"))
 envectors15<-envfit(P15.scores[,1:2] ~ P15.scores$Sample_Year, na.rm=TRUE)
@@ -251,7 +237,7 @@ head(envectors17)
 P19.scores<-droplevels(subset(np.scores, np.scores$Transect=="P19"))
 envectors19<-envfit(P19.scores[,1:2] ~ P19.scores$Sample_Year, na.rm=TRUE)
 head(envectors19)
-#Sample_Year, P=0.006
+#Sample_Year, P=0.008
 
 
 #extract vectors, center them at origin, or centroid for each transect?
@@ -262,35 +248,15 @@ vectors.np<-rbind(vectors.15, vectors.17, vectors.19)
 vectors.np
 
 #add vector to graph
-np.graph3<-ggplot.NMDS(mds.pa2, native.prairie$TransYear, colors.14)+annotate("text", x=1.1, y=-1.0, label="stress=0.185", size=6)+labs(title = "Native Prairie")+theme(plot.title = element_text(hjust=0.5, size=20, face="bold"), panel.grid= element_blank())+
-  geom_segment(data=vectors.np, aes(x=0,xend=arrows.MDS1, y=0,yend=arrows.MDS2),arrow=arrow(length = unit(0.35, "cm")),colour="darkgrey",size=1,inherit_aes=FALSE)
-np.graph3
-
-#revised graph
 np.graph3b<-np.graph2+
   geom_segment(data=vectors.np, aes(x=0,xend=arrows.MDS1, y=0,yend=arrows.MDS2),arrow=arrow(length = unit(0.35, "cm")),colour="darkgrey",size=1,inherit_aes=FALSE)
 np.graph3b
 
 #Nachusa labels
-np.graph5<-ggplot.NMDS(mds.pa2, native.prairie$SiteYear, colors.14N)+annotate("text", x=1.1, y=-1.0, label="stress=0.185", size=6)+labs(title = "Native Prairie")+theme(plot.title = element_text(hjust=0.5, size=20, face="bold"), panel.grid= element_blank())+
-  geom_segment(data=vectors.np, aes(x=0,xend=arrows.MDS1, y=0,yend=arrows.MDS2),arrow=arrow(length = unit(0.35, "cm")),colour="darkgrey",size=1,inherit_aes=FALSE)
-np.graph5
-
-#revised
 np.graph5b<-np.graph2NR+
   geom_segment(data=vectors.np, aes(x=0,xend=arrows.MDS1, y=0,yend=arrows.MDS2),arrow=arrow(length = unit(0.35, "cm")),colour="darkgrey",size=1,inherit_aes=FALSE)
 np.graph5b
 
-#center at transect centroids
-#extract centroids
-centroids.np<-data.frame(envectors2$factors[1:4])
-centroids.np
-vectors.np2<-data.frame(cbind(vectors.np, centroids.np[2:4,]))
-vectors.np2
-
-np.graph4<-ggplot.NMDS(mds.pa2, native.prairie$TransYear, colors.14)+annotate("text", x=1.1, y=-1.0, label="stress=0.185", size=6)+labs(title = "Native Prairie")+theme(plot.title = element_text(hjust=0.5, size=20, face="bold"), panel.grid= element_blank())+
-  geom_segment(data=vectors.np2, aes(x=centroids.NMDS1,xend=arrows.MDS1, y=centroids.NMDS2,yend=arrows.MDS2),arrow=arrow(length = unit(0.35, "cm")),colour="darkgrey",size=1,inherit_aes=FALSE)+geom_text(x=arrows.MDS1, y=arrows.MDS2, label="P15", size=5, color="black")
-np.graph4
 
 #indicator species analysis
 #summarize by species, use wide data
@@ -313,10 +279,10 @@ planted.prairie$SiteYear<-as.factor(paste(planted.prairie$site, planted.prairie$
 
 mds.pa2<-metaMDS(decostand(planted.prairie[,-c(1:5,432:433)],"pa" ),distance="jaccard", k=2,autotransform=FALSE, na.rm=TRUE)
 mds.pa2
-#stress for 2D=0.246
+#stress for 2D=0.243
 mds.pa3<-metaMDS(decostand(planted.prairie[,-c(1:5,432:433)],"pa" ),distance="jaccard", k=3,autotransform=FALSE, na.rm=TRUE)
 mds.pa3
-#stress for 3D=0.165, this is substantially lower than 2D, definitely use 3D
+#stress for 3D=0.166, this is substantially lower than 2D, definitely use 3D
 #scores into dataframe
 MDS1<-data.frame(scores(mds.pa3))$NMDS1
 MDS2<-data.frame(scores(mds.pa3))$NMDS2
@@ -330,8 +296,6 @@ rest.prairie.NMDS<-data.frame(MDS1, MDS2, MDS3, Transect, Sample_Year,TransYear,
 #The following code produces a 3D plot, which was replaced in the revision with 3 panel view of 2D graphs
 #We keep the code in this file as a reference for others who may wish to view the 3D graph
 library(plotly)
-rest.prairie3D<-plot_ly(x=rest.prairie.NMDS$MDS1, y=rest.prairie.NMDS$MDS2, z=rest.prairie.NMDS$MDS3)
-rest.prairie3D
 
 #graph with the interaction
 #retool this so colors work better with plot_ly, plot_ly prefers max of 8 colors
@@ -354,8 +318,7 @@ rest.prairie3D<-plot_ly(x=rest.prairie.sum$mean.x, y=rest.prairie.sum$mean.y, z=
                                       colors=c(rev(brewer.pal(n=4, name = "YlOrRd")),rev(brewer.pal(n=3, name="Greens")),rev(brewer.pal(n=5, name="PuRd")),rev(brewer.pal(n=4,name="Blues")))))
 add_markers(rest.prairie3D, color= ~rest.prairie.sum$TransYear, colors=c(rev(brewer.pal(n=4, name = "YlOrRd")),rev(brewer.pal(n=3, name="Greens")),rev(brewer.pal(n=5, name="PuRd")),rev(brewer.pal(n=4,name="Blues"))))
 
-#colors=c(rev(brewer.pal(n=4, name = "YlOrRd")),rev(brewer.pal(n=3, name="Greens")),rev(brewer.pal(n=5, name="PuRd")),rev(brewer.pal(n=4,name="Blues")))
-
+#Published graph
 #pull apart into 3 2D plots for revised manuscript (July 2021)
 ggplot.NMDS.3point<-function(XX,ZZ,COLORS){
   library(ggplot2)
@@ -392,11 +355,13 @@ restprairie.graph
 
 #Nachusa labels
 rest.prairie3DN<-plot_ly(x=rest.prairie.NMDS$MDS1, y=rest.prairie.NMDS$MDS2, z=rest.prairie.NMDS$MDS3)
-add_markers(rest.prairie3D, color= ~SiteYear, colors=c(rev(brewer.pal(n=5, name = "YlOrRd")),rev(brewer.pal(n=4, name="Greens")),rev(brewer.pal(n=4, name="PuRd")),rev(brewer.pal(n=3,name="Blues"))))
+add_markers(rest.prairie3DN, color= ~SiteYear, colors=c(rev(brewer.pal(n=5, name = "YlOrRd")),rev(brewer.pal(n=4, name="Greens")),rev(brewer.pal(n=4, name="PuRd")),rev(brewer.pal(n=3,name="Blues"))))
 
 #Pulled into 2D
-restprairie.graphN<-ggplot.NMDS.3point(mds.pa3, rest.prairie.NMDS$SiteYear, colors.16)
+colors.16N<-c(rev(brewer.pal(n=5, name = "YlOrRd")),rev(brewer.pal(n=4, name="Greens")),rev(brewer.pal(n=4, name="PuRd")),rev(brewer.pal(n=3,name="Blues")))
+restprairie.graphN<-ggplot.NMDS.3point(mds.pa3, rest.prairie.NMDS$SiteYear, colors.16N)
 restprairie.graphN
+
 #modified for better sizing
 ggplot.NMDS.3pointN<-function(XX,ZZ,COLORS){
   library(ggplot2)
@@ -427,7 +392,7 @@ ggplot.NMDS.3pointN<-function(XX,ZZ,COLORS){
   print(grid::grid.newpage())
   print(grid.arrange(X1a, X2a, X3a, nrow=1, widths=c(2,2,3.25)))
 }
-restprairie.graphN<-ggplot.NMDS.3pointN(mds.pa3, rest.prairie.NMDS$SiteYear, colors.16)
+restprairie.graphN<-ggplot.NMDS.3pointN(mds.pa3, rest.prairie.NMDS$SiteYear, colors.16N)
 restprairie.graphN
 
 #stats
@@ -464,7 +429,7 @@ add_trace(data=vectors2, x=vectors2$arrows.388, y=vectors2$arrows.389, z=vectors
 
 #build this up transect by transect? pull scores from full ordination by transect
 P23<-droplevels(subset(planted.prairie, planted.prairie$Transect=="P23"))
-adonis(P23[,-c(1:4,431)]~P23$Sample_Year, permutations=999)
+adonis(P23[,-c(1:5,432:433)]~P23$Sample_Year, permutations=999)
 #sample year strongly significant
 
 #run envfit regressions with original NMDS scores, use rest.prairie.NMDS data frame
@@ -476,7 +441,7 @@ head(envectors23)
 #Sample_Year P=0.001
 
 P26<-droplevels(subset(planted.prairie, planted.prairie$Transect=="P26"))
-adonis(P26[,-c(1:4,431)]~P26$Sample_Year, permutations=999)
+adonis(P26[,-c(1:5,432:433)]~P26$Sample_Year, permutations=999)
 #Sample year highly significant
 
 #run envfit regressions with original NMDS scores, use rest.prairie.NMDS data frame
@@ -487,7 +452,7 @@ head(envectors26)
 #Sample_Year P=0.001
 
 P31<-droplevels(subset(planted.prairie, planted.prairie$Transect=="P31"))
-adonis(P31[,-c(1:4,431)]~P31$Sample_Year, permutations=999)
+adonis(P31[,-c(1:5,432:433)]~P31$Sample_Year, permutations=999)
 #Sample_Year highly significant
 
 P31.scores<-droplevels(subset(rest.prairie.NMDS, rest.prairie.NMDS$Transect=="P31"))
@@ -497,7 +462,7 @@ head(envectors31)
 #Sample year P=0.001
 
 P32<-droplevels(subset(planted.prairie, planted.prairie$Transect=="P32"))
-adonis(P32[,-c(1:4,431)]~P32$Sample_Year, permutations=999)
+adonis(P32[,-c(1:5,432:433)]~P32$Sample_Year, permutations=999)
 #Sample_year highly significant
 
 P32.scores<-droplevels(subset(rest.prairie.NMDS, rest.prairie.NMDS$Transect=="P32"))
@@ -526,7 +491,7 @@ plot_ly() %>%
   add_trace(data=vectors.31c, x=vectors.31c$arrows.MDS1, y=vectors.31c$arrows.MDS2, z=vectors.31c$arrows.MDS3,mode="line",type="scatter3d", color=I("purple"))%>%
   add_trace(data=vectors.32c, x=vectors.32c$arrows.MDS1, y=vectors.32c$arrows.MDS2, z=vectors.32c$arrows.MDS3,mode="line",type="scatter3d", color=I("blue"))
 
-#vectors on 2D graphs
+#vectors on 2D graphs, for publication
 ggplot.NMDS.3pointV<-function(XX,ZZ,COLORS){
   library(ggplot2)
   library(plyr)
@@ -601,29 +566,20 @@ mds.pa2
 #stress=0.133
 
 #graph with the interaction
+#interaction graph for revision, simplified
 colors.13<-c(rgb(111,172,93, max=255, alpha=255),rgb(111,172,93, max=255, alpha=100),rgb(111,172,93, max=255, alpha=50), rgb(105,126,213, max=255, alpha = 255), rgb(105,126,213, max=255, alpha = 100), rgb(105,126,213, max=255, alpha = 50),
              rgb(147,80,161, max=255, alpha=255),rgb(147,80,161, max=255, alpha=200),rgb(147,80,161, max=255, alpha=100),rgb(147,80,161, max=255, alpha=50), rgb(188,125,57, max=255, alpha=255),rgb(188,125,57, max=255, alpha=100),rgb(188,125,57, max=255, alpha=50))
 
-savanna.graph<-ggplot.NMDS(mds.pa2, savanna$TransYear, colors.13)+annotate("text", x=-0.80, y=1.35, label="stress=0.133", size=5)+labs(title = "Savanna")+theme(plot.title = element_text(hjust=0.5, size=20, face="bold"), panel.grid = element_blank())
-savanna.graph
-#roughly x-axis is transect difference, y-axis is the sampling year difference
-
-#interaction graph for revision, simplified
 savanna.graph2<-ggplot.NMDS.point(mds.pa2, savanna$TransYear, colors.13)+annotate("text", x=1.1, y=-1.0, label="stress=0.133", size=6)+labs(title = "Savanna")+theme(plot.title = element_text(hjust=0.5, size=20, face="bold"), panel.grid= element_blank())
 savanna.graph2
 
 #Nachusa labels
-savanna.graphN<-ggplot.NMDS(mds.pa2, savanna$SiteYear, colors.13)+annotate("text", x=-0.80, y=1.35, label="stress=0.133", size=5)+labs(title = "Savanna")+theme(plot.title = element_text(hjust=0.5, size=20, face="bold"), panel.grid = element_blank())
-savanna.graphN
-
-#Nachusa lables simplified
 savanna.graph2N<-ggplot.NMDS.point(mds.pa2, savanna$SiteYear, colors.13)+annotate("text", x=1.1, y=-1.0, label="stress=0.133", size=6)+labs(title = "Savanna")+theme(plot.title = element_text(hjust=0.5, size=20, face="bold"), panel.grid= element_blank())
 savanna.graph2N
 
-
 #stats to understand interaction
 #TukeyHSD to untangle
-mds.dist<-metaMDSdist(decostand(savanna[,-c(1:4,431)], "pa"),k=2, index="jaccard", autotransform=FALSE,na.rm=TRUE)
+mds.dist<-metaMDSdist(decostand(savanna[,-c(1:5,432:433)], "pa"),k=2, index="jaccard", autotransform=FALSE,na.rm=TRUE)
 savanna.stat<-betadisper(mds.dist, savanna$TransYear, type="median")
 savanna.stat
 
@@ -643,25 +599,25 @@ vector.sav<-data.frame(envectors2$vectors[1:4])
 vector.sav
 
 #add vector to graph
-savanna.graph<-ggplot.NMDS(mds.pa2, savanna$TransYear, colors.13)+annotate("text", x=-0.80, y=1.35, label="stress=0.133", size=5)+labs(title = "Savanna")+theme(plot.title = element_text(hjust=0.5, size=20, face="bold"), panel.grid = element_blank())+
+savanna.graph<-ggplot.NMDS.point(mds.pa2, savanna$TransYear, colors.13)+annotate("text", x=1.1, y=-1.0, label="stress=0.133", size=6)+labs(title = "Savanna")+theme(plot.title = element_text(hjust=0.5, size=20, face="bold"), panel.grid= element_blank())+
   geom_segment(data=vector.sav, aes(x=0,xend=arrows.43, y=0,yend=arrows.44),arrow=arrow(length = unit(0.35, "cm")),colour="darkgrey",size=1,inherit_aes=FALSE)
 savanna.graph
 
 #Pull out transect level data
 P08<-droplevels(subset(savanna, savanna$Transect=="P08"))
-adonis(P08[,-c(1:4,431)]~P08$Sample_Year, permutations=999)
+adonis(P08[,-c(1:5,432:433)]~P08$Sample_Year, permutations=999)
 #Sample_Year highly significant
 
 P24<-droplevels(subset(savanna, savanna$Transect=="P24"))
-adonis(P24[,-c(1:4,431)]~P24$Sample_Year, permutations=999)
+adonis(P24[,-c(1:5,432:433)]~P24$Sample_Year, permutations=999)
 #Sample_Year highly significant
 
 P39<-droplevels(subset(savanna, savanna$Transect=="P39"))
-adonis(P39[,-c(1:4,431)]~P39$Sample_Year, permutations=999)
+adonis(P39[,-c(1:5,432:433)]~P39$Sample_Year, permutations=999)
 #Sample_Year highly significant
 
 P41<-droplevels(subset(savanna, savanna$Transect=="P41"))
-adonis(P41[,-c(1:4,431)]~P41$Sample_Year, permutations=999)
+adonis(P41[,-c(1:5,432:433)]~P41$Sample_Year, permutations=999)
 #Sample_Year highly significant
 
 #pull out NMDS scores and run regressions with envfit
@@ -686,15 +642,14 @@ head(envectors24)
 P39.scores<-droplevels(subset(savanna.NMDS, savanna.NMDS$Transect=="P39"))
 envectors39<-envfit(P39.scores[,1:2] ~ P39.scores$Sample_Year, na.rm=TRUE)
 head(envectors39)
-#Sample_Year P=0.029
+#Sample_Year P=0.017
 
 P41.scores<-droplevels(subset(savanna.NMDS, savanna.NMDS$Transect=="P41"))
 envectors41<-envfit(P41.scores[,1:2] ~ P41.scores$Sample_Year, na.rm=TRUE)
 head(envectors41)
 #Sample_Year P=0.334
 
-#interaction may be because P41 is not significant
-#others may also be going different directions, so follow-up on that
+#interaction may be because all going different directions
 
 #extract vectors, center them at origin, or centroid for each transect?
 vectors.08<-data.frame(envectors08$vectors[1:4])
@@ -704,18 +659,6 @@ vectors.41<-data.frame(envectors41$vectors[1:4])
 vectors.sav<-rbind(vectors.08, vectors.24, vectors.39)
 #P41 not significant, do not include it on graph
 vectors.sav
-
-#add vector to graph
-savanna.graph3<-ggplot.NMDS(mds.pa2, savanna$TransYear, colors.13)+annotate("text", x=1.1, y=-1.0, label="stress=0.133", size=6)+labs(title = "Savanna")+theme(plot.title = element_text(hjust=0.5, size=20, face="bold"), panel.grid= element_blank())+
-  geom_segment(data=vectors.sav, aes(x=0,xend=arrows.MDS1, y=0,yend=arrows.MDS2),arrow=arrow(length = unit(0.35, "cm")),colour="darkgrey",size=1,inherit_aes=FALSE)
-savanna.graph3
-
-#P08 and P39 are moving in a similar direction, and P24 is different
-
-#Nachusa labels
-savanna.graph3N<-ggplot.NMDS(mds.pa2, savanna$SiteYear, colors.13)+annotate("text", x=1.1, y=-1.0, label="stress=0.133", size=6)+labs(title = "Savanna")+theme(plot.title = element_text(hjust=0.5, size=20, face="bold"), panel.grid= element_blank())+
-  geom_segment(data=vectors.sav, aes(x=0,xend=arrows.MDS1, y=0,yend=arrows.MDS2),arrow=arrow(length = unit(0.35, "cm")),colour="darkgrey",size=1,inherit_aes=FALSE)
-savanna.graph3N
 
 #revision with simplified graphs, uses mean point with SE of all quadrats
 savanna.graph3b<-savanna.graph2+
@@ -727,25 +670,6 @@ savanna.graph3N<-savanna.graph2N+
   geom_segment(data=vectors.sav, aes(x=0,xend=arrows.MDS1, y=0,yend=arrows.MDS2),arrow=arrow(length = unit(0.35, "cm")),colour="darkgrey",size=1,inherit_aes=FALSE)
 savanna.graph3N
 
-#center at transect centroids
-#extract centroids
-centroids.sav<-data.frame(envectors2$factors[1:4])
-centroids.sav
-#why are the centroids so far from the transect centers? Still trouble-shooting this, but they should be centered at origin anyway
-vectors.sav2<-data.frame(cbind(vectors.sav, centroids.sav[1:3,1:2]))
-vectors.sav2
-
-savanna.graph4<-ggplot.NMDS(mds.pa2, savanna$TransYear, colors.13)+annotate("text", x=1.1, y=-1.0, label="stress=0.133", size=6)+labs(title = "Savanna")+theme(plot.title = element_text(hjust=0.5, size=20, face="bold"), panel.grid= element_blank())+
-  geom_segment(data=vectors.sav2, aes(x=centroids.43,xend=arrows.MDS1, y=centroids.44,yend=arrows.MDS2),arrow=arrow(length = unit(0.35, "cm")),colour="darkgrey",size=1,inherit_aes=FALSE)
-savanna.graph4
-#something not right here!
-
-#graph with Nachusa labels
-SiteYear<-c("W.Heinkel:1996", "W.Heinkel:2003", "W.Heinkel:2013", "Pottawatomi Ridge:1996","Pottawatomi Ridge:2003","Pottawatomi Ridge:2013","W.Heinkel-Jay:1997","W.Heinkel-Jay:2003","W.Heinkel-Jay:2013","E.Heinkel:1997","E.Heinkel:2003","E.Heinkel:2013")
-
-savanna.graph5<-ggplot.NMDS(mds.pa2, savanna$TransYear, colors.13)+annotate("text", x=1.1, y=-1.0, label="stress=0.133", size=6)+labs(title = "Savanna")+theme(plot.title = element_text(hjust=0.5, size=20, face="bold"), panel.grid= element_blank())+
-  geom_segment(data=vectors.sav, aes(x=0,xend=arrows.MDS1, y=0,yend=arrows.MDS2),arrow=arrow(length = unit(0.35, "cm")),colour="darkgrey",size=1,inherit_aes=FALSE)
-savanna.graph5
 
 #indicator species analysis
 #summarize by species, use wide data
@@ -786,7 +710,7 @@ all.prairie.NMDS<-data.frame(MDS1, MDS2, MDS3, Transect, Sample_Year,TransYear, 
 library(RColorBrewer)
 colors=c(brewer.pal(n=9, name = "YlOrRd")[c(3,5,7,9)],brewer.pal(n=9,name="Blues")[c(3,5,7,9)])
   
-#pull apart into 3 2D plots
+#pull apart into 3 2D plots - first look, not used in publication
 ggplot.NMDS.3point<-function(XX,ZZ,COLORS){
   library(ggplot2)
   library(plyr)
@@ -837,7 +761,7 @@ rp.stat
 #Now use TukeysHSD to contrast the median dispersion of the groups and find differences
 TukeyHSD(rp.stat)
 
-#Look at the interaction?
+#Look at the interaction with year: Use this one for publication
 colors2=c("#FED976","#FED976","#FED976","#FD8D3C","#FD8D3C","#FD8D3C","#E31A1C","#E31A1C","#E31A1C","#E31A1C","#E31A1C","#800026","#800026","#800026",
           "#C6DBEF","#C6DBEF","#C6DBEF","#C6DBEF","#6BAED6","#6BAED6","#6BAED6","#2171B5","#2171B5","#2171B5","#2171B5","#2171B5","#08306B","#08306B","#08306B","#08306B")
 ggplot.NMDS.3point<-function(XX,ZZ,COLORS){
@@ -871,7 +795,7 @@ ggplot.NMDS.3point<-function(XX,ZZ,COLORS){
 allprairie.graph2<-ggplot.NMDS.3point(mds.pa3, all.prairie.NMDS$TransYear, colors2)
 allprairie.graph2
 
-#Just 2 colors, NP and PP?
+#Just 2 colors, NP and PP? - not used in publication
 color.habitat<-c("#2b1365","#cd4b23")
 ggplot.NMDS.3point<-function(XX,ZZ,COLORS){
   library(ggplot2)
